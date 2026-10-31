@@ -4,8 +4,10 @@
 
 ## 许可证与仓库治理
 
-- [ ] 仓库所有者已明确选择 MIT、Apache-2.0 或其他许可证。
-- [ ] 已添加与人工决定一致的 `LICENSE`；如选 Apache-2.0，已评估是否需要 `NOTICE`。
+- [x] 仓库所有者已明确选择 Apache-2.0。
+- [x] 版权声明已由用户确认为 `Copyright 2026 Jack Wang`。
+- [x] 根目录 `LICENSE` 已包含 Apache License 2.0 官方完整英文原文。
+- [x] 已检查当前源码、文档、素材和直接依赖归属；目前没有需要写入 NOTICE 的已知第三方声明，未来引入第三方内容时必须重新评估。
 - [ ] 已复核 README、SECURITY 和 CONTRIBUTING，不含虚构联系人或效果声明。
 - [ ] 默认分支确认为 `main`，并按需要配置分支保护和必需状态检查。
 - [ ] GitHub Private vulnerability reporting、Dependabot alerts 和安全更新由所有者在仓库设置中确认。

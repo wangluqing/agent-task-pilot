@@ -163,13 +163,12 @@ app.py            # Streamlit 单页入口
 - 不持久化历史报告，不支持团队协作、用户账户或企业系统集成。
 - 没有内置费用预算、调用统计和在线漏洞扫描。
 
-## 许可证状态
+## 许可证
 
-仓库目前尚未确定开源许可证。在仓库所有者明确选择并添加 `LICENSE` 前，源码公开可见不代表获得复制、修改、分发或商用授权。
+Copyright 2026 Jack Wang.
 
-- MIT：文本简短、限制少，要求保留版权与许可证声明。
-- Apache-2.0：同样允许广泛使用，并包含明确的专利授权和 NOTICE 机制，文本和合规要求更完整。
+本项目采用 [Apache License 2.0](LICENSE)。该许可证允许在遵守许可证条款的前提下使用、修改和分发本项目，并包含明确的专利授权。AgentTaskPilot 不是 Apache Software Foundation 的官方项目，项目名称和说明也不表示 ASF 认可或赞助。
 
-若项目计划接受企业采用或外部贡献，建议所有者优先评估 Apache-2.0；最终选择必须由仓库所有者确认。
+当前仓库没有需要放入 NOTICE 的已知第三方归属声明；如果未来复制或分发带有 NOTICE/归属要求的第三方内容，必须保留相应声明并重新评估是否添加 `NOTICE`。
 
 产品范围见 [PRD.md](PRD.md)，实施计划见 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)，工程约束见 [AGENTS.md](AGENTS.md)。
