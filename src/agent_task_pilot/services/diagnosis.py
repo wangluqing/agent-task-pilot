@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Protocol
 
 from pydantic import ValidationError
@@ -32,12 +33,26 @@ class ReportRenderer(Protocol):
         ...
 
 
+REPORT_MODE_LABELS: Mapping[AnalysisMode, str] = MappingProxyType(
+    {
+        AnalysisMode.MOCK: "【Mock 演示结果】",
+        AnalysisMode.DEEPSEEK: "DeepSeek 真实模型分析",
+    }
+)
+
+
 @dataclass(frozen=True, slots=True)
 class DiagnosisResult:
     """Complete successful result; failures are represented only by exceptions."""
 
     report: AgentReport
     markdown: str
+    mode: AnalysisMode
+
+    @property
+    def mode_label(self) -> str:
+        """Return the trusted application-owned display label for this mode."""
+        return REPORT_MODE_LABELS[self.mode]
 
 
 class DiagnosisService:
@@ -70,8 +85,12 @@ class DiagnosisService:
 
         raw_report = self._call_provider(provider, validated_input.validated_requirement)
         report = self._validate_report(raw_report)
-        markdown = self._render_report(report)
-        return DiagnosisResult(report=report, markdown=markdown)
+        markdown = self._render_report(report, validated_input.mode)
+        return DiagnosisResult(
+            report=report,
+            markdown=markdown,
+            mode=validated_input.mode,
+        )
 
     @staticmethod
     def _call_provider(provider: DiagnosisProvider, requirement: str) -> object:
@@ -93,9 +112,15 @@ class DiagnosisService:
         except Exception:
             raise UnknownProviderError from None
 
-    def _render_report(self, report: AgentReport) -> str:
+    def _render_report(self, report: AgentReport, mode: AnalysisMode) -> str:
         try:
-            markdown = self._renderer.render(report)
+            if isinstance(self._renderer, MarkdownRenderer):
+                markdown = self._renderer.render(
+                    report,
+                    mode_label=REPORT_MODE_LABELS[mode],
+                )
+            else:
+                markdown = self._renderer.render(report)
         except Exception:
             raise UnknownProviderError from None
         if not isinstance(markdown, str) or not markdown.strip():

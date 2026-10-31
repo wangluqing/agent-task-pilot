@@ -21,14 +21,14 @@ _LINE_BREAKS = re.compile(r"\r\n?|\n")
 class MarkdownRenderer:
     """Render a validated AgentReport without I/O or external side effects."""
 
-    def render(self, report: AgentReport) -> str:
+    def render(self, report: AgentReport, *, mode_label: str | None = None) -> str:
         """Convert a validated report into deterministic Chinese Markdown."""
         lines: list[str] = []
         append = lines.append
 
         append(f"# {self._safe_text(report.title)}")
         append("")
-        append(f"**模式标识：** {self._mode_label(report)}")
+        append(f"**模式标识：** {self._mode_label(report, mode_label)}")
         append("")
 
         append("## 1. 需求摘要")
@@ -109,15 +109,23 @@ class MarkdownRenderer:
         append("- 本报告仅用于需求诊断与方案讨论，不代表自动执行授权或最终业务决策。")
         append("- 报告仅包含领域模型中的需求摘要，不包含用户原始需求全文。")
         append("- 所有建议指标均为建议值，需由业务负责人审核后才能成为正式验收目标。")
-        if self._is_mock(report):
+        if self._is_mock_mode(report, mode_label):
             append(f"- {MOCK_MARKER}内容由固定规则与模板生成，不代表真实模型分析或实测结果。")
 
         return "\n".join(lines).rstrip() + "\n"
 
-    def _mode_label(self, report: AgentReport) -> str:
+    def _mode_label(self, report: AgentReport, trusted_label: str | None) -> str:
+        if trusted_label is not None:
+            return self._safe_text(trusted_label)
         if self._is_mock(report):
             return MOCK_MARKER
         return "未在报告字段中声明"
+
+    @classmethod
+    def _is_mock_mode(cls, report: AgentReport, trusted_label: str | None) -> bool:
+        if trusted_label is not None:
+            return trusted_label == MOCK_MARKER
+        return cls._is_mock(report)
 
     @staticmethod
     def _is_mock(report: AgentReport) -> bool:

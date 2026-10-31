@@ -85,6 +85,7 @@ def test_valid_input_shows_complete_report_and_download() -> None:
     assert "有条件适合" in visible
     assert "建议值" in visible
     assert "人工审核" in visible
+    assert "模式标识：** 【Mock 演示结果】" in visible
 
 
 @pytest.mark.parametrize(
@@ -281,6 +282,8 @@ def test_authorized_deepseek_returns_report_and_markdown(
     assert app.button[0].disabled is True
     assert "DeepSeek 外部模型分析已完成" in _visible_text(app)
     assert "不构成专业咨询结论" in _visible_text(app)
+    assert "模式标识：** DeepSeek 真实模型分析" in _visible_text(app)
+    assert "**模式标识：** DeepSeek 真实模型分析" in app.session_state["diagnosis_result"].markdown
     assert "客服工单分流 Agent 诊断报告" in app.session_state["diagnosis_result"].markdown
 
 
@@ -333,6 +336,31 @@ def test_each_deepseek_request_requires_new_consent_and_rerun_does_not_repeat(
     app.button[0].click().run()
     assert calls == 2
     assert app.checkbox[0].value is False
+
+
+def test_switching_from_deepseek_to_mock_replaces_mode_label(
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", lambda self, requirement: report)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+    assert "DeepSeek 真实模型分析" in _visible_text(app)
+
+    app.radio[0].set_value("Mock（本地演示）").run()
+    assert len(app.download_button) == 0
+    app.button[0].click().run()
+
+    visible = _visible_text(app)
+    markdown = app.session_state["diagnosis_result"].markdown
+    assert "模式标识：** 【Mock 演示结果】" in visible
+    assert "DeepSeek 真实模型分析" not in visible
+    assert "**模式标识：** 【Mock 演示结果】" in markdown
+    assert "DeepSeek 真实模型分析" not in markdown
 
 
 def test_missing_deepseek_config_fails_without_mock_fallback(

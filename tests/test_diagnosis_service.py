@@ -83,6 +83,9 @@ def test_default_mock_pipeline_returns_complete_result() -> None:
     assert isinstance(result, DiagnosisResult)
     assert isinstance(result.report, AgentReport)
     assert result.report.applicability.verdict.value == "有条件适合"
+    assert result.mode is AnalysisMode.MOCK
+    assert result.mode_label == "【Mock 演示结果】"
+    assert "**模式标识：** 【Mock 演示结果】" in result.markdown
     assert "## 1. 需求摘要" in result.markdown
     assert "## 8. 使用限制" in result.markdown
 
@@ -137,6 +140,10 @@ def test_default_service_registers_deepseek_provider_and_renders_result(
 
     assert calls == ["分析客服工单"]
     assert result.report == report
+    assert result.mode is AnalysisMode.DEEPSEEK
+    assert result.mode_label == "DeepSeek 真实模型分析"
+    assert "**模式标识：** DeepSeek 真实模型分析" in result.markdown
+    assert "未在报告字段中声明" not in result.markdown
     assert "客服工单分流 Agent 诊断报告" in result.markdown
 
 

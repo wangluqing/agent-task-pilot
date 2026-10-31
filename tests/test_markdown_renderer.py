@@ -57,6 +57,23 @@ def test_mock_notice_is_prominently_preserved() -> None:
     assert rendered.count("【Mock 演示结果】") >= 3
 
 
+def test_trusted_deepseek_mode_label_does_not_depend_on_report_fields(
+    minimal_report_data: dict[str, object],
+) -> None:
+    data = deepcopy(minimal_report_data)
+    data["title"] = "模型自称【Mock 演示结果】但应用模式优先"
+    report = AgentReport.model_validate(data)
+
+    rendered = MarkdownRenderer().render(
+        report,
+        mode_label="DeepSeek 真实模型分析",
+    )
+
+    assert "**模式标识：** DeepSeek 真实模型分析" in rendered
+    assert "**模式标识：** 【Mock 演示结果】" not in rendered
+    assert "内容由固定规则与模板生成" not in rendered
+
+
 def test_metric_remains_explicitly_suggested(
     minimal_report_data: dict[str, object],
 ) -> None:

@@ -20,7 +20,6 @@ DOWNLOAD_FILENAME = "agent_diagnosis_report.md"
 def _clear_outcome() -> None:
     """Remove report and safe error state from the current session."""
     st.session_state.pop("diagnosis_result", None)
-    st.session_state.pop("result_mode", None)
     st.session_state.pop("diagnosis_error", None)
 
 
@@ -61,10 +60,10 @@ def _initialize_state() -> None:
     st.session_state.setdefault("request_in_progress", False)
 
 
-def _display_report(result: DiagnosisResult, mode: str) -> None:
+def _display_report(result: DiagnosisResult) -> None:
     """Display a report without modifying its domain object."""
     report = result.report
-    if mode == "deepseek":
+    if result.mode.value == "deepseek":
         st.success(
             "DeepSeek 外部模型分析已完成。结果仅供辅助评估，"
             "不保证业务判断准确，也不构成专业咨询结论。"
@@ -73,6 +72,7 @@ def _display_report(result: DiagnosisResult, mode: str) -> None:
         st.success("诊断完成。以下内容为 Mock 本地模板演示结果。")
 
     st.header("诊断结果")
+    st.markdown(f"**模式标识：** {result.mode_label}")
     st.subheader("适用性判断")
     st.write(f"结论：{report.applicability.verdict.value}")
     st.markdown("**判断理由**")
@@ -224,7 +224,6 @@ def main() -> None:
                 with st.spinner(spinner_message):
                     result = DiagnosisService().analyze(requirement, mode=current_mode)
                 st.session_state["diagnosis_result"] = result
-                st.session_state["result_mode"] = current_mode
                 st.session_state.pop("diagnosis_error", None)
         except InputValidationError as error:
             st.session_state["diagnosis_error"] = str(error)
@@ -241,9 +240,8 @@ def main() -> None:
         st.error(error_message)
 
     result = st.session_state.get("diagnosis_result")
-    result_mode = st.session_state.get("result_mode")
-    if isinstance(result, DiagnosisResult) and result_mode in {"mock", "deepseek"}:
-        _display_report(result, result_mode)
+    if isinstance(result, DiagnosisResult):
+        _display_report(result)
 
 
 if __name__ == "__main__":
