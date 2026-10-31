@@ -32,10 +32,10 @@ uv --version
 
 ## 克隆与安装
 
-仓库公开后，请把 `<OWNER>` 替换为实际 GitHub 账号或组织名：
+仓库地址：`https://github.com/wangluqing/agent-task-pilot`
 
 ```powershell
-git clone https://github.com/<OWNER>/agent-task-pilot.git
+git clone https://github.com/wangluqing/agent-task-pilot.git
 Set-Location agent-task-pilot
 $env:UV_CACHE_DIR = "$PWD\.uv-cache"
 uv sync --locked
