@@ -16,7 +16,15 @@ $env:UV_CACHE_DIR = "$PWD\.uv-cache"
 uv sync --locked
 ```
 
-项目默认 Mock 模式不需要 API Key。未来启用 DeepSeek 时，复制 `.env.example` 为本地 `.env` 并通过安全方式设置 `DEEPSEEK_API_KEY`；不要提交 `.env`。应用不会从页面收集 API Key。
+项目默认 Mock 模式不需要 API Key。DeepSeek 配置模块只在被显式调用时读取进程环境变量，不会在导入时读取配置，也不会自动加载 `.env`。可在 Windows PowerShell 当前会话中设置：
+
+```powershell
+$env:DEEPSEEK_API_KEY = "<your-key>"
+$env:DEEPSEEK_MODEL = "deepseek-flash"
+$env:DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+```
+
+`.env.example` 仅作为变量名参考；不要在其中填写真实密钥，也不要提交本地 `.env`。应用不会从页面收集 API Key，当前 UI 仍未开放 DeepSeek 模式。
 
 ## 启动 Streamlit Demo
 

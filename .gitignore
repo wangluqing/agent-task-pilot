@@ -19,6 +19,11 @@ htmlcov/
 .env
 .env.*
 !.env.example
+*.secret
+*.secrets
+.secrets/
+secrets/
+.streamlit/secrets.toml
 
 # Editors and operating systems
 .idea/
