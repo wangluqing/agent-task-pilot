@@ -5,7 +5,6 @@ from enum import StrEnum
 from agent_task_pilot.domain import AgentReport
 
 MOCK_NOTICE = "【Mock 演示结果】本报告由本地固定规则与模板生成，未调用真实 AI 模型。"
-SUMMARY_LIMIT = 120
 
 
 class MockScenario(StrEnum):
@@ -30,7 +29,7 @@ class MockProvider:
     def diagnose(self, validated_requirement: str) -> AgentReport:
         """Return a new validated report for the first matching scenario rule."""
         scenario = self._match_scenario(validated_requirement)
-        summary = self._summarize(validated_requirement)
+        summary = self._summarize(scenario)
         return AgentReport.model_validate(self._build_report(scenario, summary))
 
     @staticmethod
@@ -42,17 +41,29 @@ class MockProvider:
         return MockScenario.GENERIC
 
     @staticmethod
-    def _summarize(validated_requirement: str) -> str:
-        compact = " ".join(validated_requirement.split())
-        if len(compact) <= SUMMARY_LIMIT:
-            return compact
-        return f"{compact[: SUMMARY_LIMIT - 1]}…"
+    def _summarize(scenario: MockScenario) -> str:
+        """Describe the matched business intent without copying user text."""
+        summaries = {
+            MockScenario.CUSTOMER_TICKET: (
+                "需求聚焦客服工单的分类与分派，需结合分类体系和人工审核规则评估。"
+            ),
+            MockScenario.KNOWLEDGE_QA: (
+                "需求聚焦企业知识库问答，需限定资料范围、权限和答案复核要求。"
+            ),
+            MockScenario.FIXED_REPORT: (
+                "需求聚焦固定格式报表汇总，需明确字段、统计口径和发布前勾稽规则。"
+            ),
+            MockScenario.GENERIC: (
+                "需求未命中内置演示场景，需由业务和技术负责人补充目标、数据范围和审核要求。"
+            ),
+        }
+        return summaries[scenario]
 
     def _build_report(self, scenario: MockScenario, summary: str) -> dict[str, object]:
         scenario_content = self._scenario_content(scenario)
         return {
             "title": f"{MOCK_NOTICE} {scenario.value}诊断报告",
-            "requirement_summary": f"规则匹配场景：{scenario.value}；有限摘要：{summary}",
+            "requirement_summary": f"规则匹配场景：{scenario.value}；业务摘要：{summary}",
             "applicability": scenario_content["applicability"],
             "workflow": scenario_content["workflow"],
             "risks": self._common_risks(),

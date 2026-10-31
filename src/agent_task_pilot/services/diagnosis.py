@@ -39,6 +39,8 @@ REPORT_MODE_LABELS: Mapping[AnalysisMode, str] = MappingProxyType(
         AnalysisMode.DEEPSEEK: "DeepSeek 真实模型分析",
     }
 )
+_MINIMUM_ECHO_LENGTH = 6
+_REDACTED_REQUIREMENT = "（原始需求内容已省略，请以需求摘要和待确认问题为准）"
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +87,7 @@ class DiagnosisService:
 
         raw_report = self._call_provider(provider, validated_input.validated_requirement)
         report = self._validate_report(raw_report)
+        report = self._remove_requirement_echoes(report, validated_input.validated_requirement)
         markdown = self._render_report(report, validated_input.mode)
         return DiagnosisResult(
             report=report,
@@ -111,6 +114,30 @@ class DiagnosisService:
             raise ReportValidationError from None
         except Exception:
             raise UnknownProviderError from None
+
+    @staticmethod
+    def _remove_requirement_echoes(report: AgentReport, requirement: str) -> AgentReport:
+        """Prevent providers from copying a meaningful full requirement into output fields."""
+        candidates = {requirement.strip(), " ".join(requirement.split())}
+        candidates = {
+            candidate for candidate in candidates if len(candidate) >= _MINIMUM_ECHO_LENGTH
+        }
+        if not candidates:
+            return report
+
+        def replace(value: object) -> object:
+            if isinstance(value, str):
+                for candidate in candidates:
+                    value = value.replace(candidate, _REDACTED_REQUIREMENT)
+                return value
+            if isinstance(value, list):
+                return [replace(item) for item in value]
+            if isinstance(value, dict):
+                return {key: replace(item) for key, item in value.items()}
+            return value
+
+        sanitized = replace(report.model_dump(mode="python"))
+        return AgentReport.model_validate(sanitized)
 
     def _render_report(self, report: AgentReport, mode: AnalysisMode) -> str:
         try:

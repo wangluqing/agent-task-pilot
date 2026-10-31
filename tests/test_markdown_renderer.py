@@ -8,6 +8,7 @@ from agent_task_pilot.domain import AgentReport
 from agent_task_pilot.providers import MockProvider
 from agent_task_pilot.providers.mock import MOCK_NOTICE
 from agent_task_pilot.renderers import MarkdownRenderer
+from agent_task_pilot.renderers.markdown import MOCK_MARKER
 
 
 def test_minimal_valid_report_renders(minimal_report_data: dict[str, object]) -> None:
@@ -55,6 +56,25 @@ def test_mock_notice_is_prominently_preserved() -> None:
     assert MOCK_NOTICE in rendered
     assert "**模式标识：** 【Mock 演示结果】" in rendered
     assert rendered.count("【Mock 演示结果】") >= 3
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "问答助手",
+        "某企业每天处理约500条客服工单，并保留人工审核。",
+        "建立企业知识库问答助手！！！",
+        "按固定格式汇总报表并核对 ✅",
+        "知识库问答知识库问答知识库问答",
+    ],
+)
+def test_mock_markdown_does_not_copy_complete_requirement(requirement: str) -> None:
+    report = MockProvider().diagnose(requirement)
+
+    rendered = MarkdownRenderer().render(report, mode_label=MOCK_MARKER)
+
+    assert requirement not in report.requirement_summary
+    assert requirement not in rendered
 
 
 def test_trusted_deepseek_mode_label_does_not_depend_on_report_fields(

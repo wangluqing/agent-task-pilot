@@ -149,11 +149,29 @@ def test_every_report_contains_required_risk_categories(requirement: str) -> Non
     }
 
 
-def test_requirement_summary_is_bounded_and_does_not_duplicate_full_input() -> None:
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "问答助手",
+        "中文，问答助手！！！",
+        "建立企业知识库问答助手",
+        "按固定格式汇总报表需求",
+        "未知需求未知需求未知文本",
+    ],
+)
+def test_requirement_summary_is_semantic_and_does_not_copy_input(requirement: str) -> None:
+    report = MockProvider().diagnose(requirement)
+
+    assert report.requirement_summary != requirement
+    assert requirement not in report.requirement_summary
+    assert "业务摘要" in report.requirement_summary
+
+
+def test_long_requirement_summary_is_semantic_and_not_truncated() -> None:
     requirement = "这是一个未识别的复杂业务需求。" * 100
 
     report = MockProvider().diagnose(requirement)
 
     assert requirement not in report.requirement_summary
-    assert "…" in report.requirement_summary
-    assert len(report.requirement_summary) < 200
+    assert "需求未命中内置演示场景" in report.requirement_summary
+    assert "…" not in report.requirement_summary

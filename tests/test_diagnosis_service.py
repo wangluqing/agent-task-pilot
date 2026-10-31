@@ -14,6 +14,7 @@ from agent_task_pilot.providers import (
     UnknownProviderError,
 )
 from agent_task_pilot.providers.mock import MOCK_NOTICE
+from agent_task_pilot.renderers import MarkdownRenderer
 from agent_task_pilot.services import (
     AnalysisMode,
     DiagnosisResult,
@@ -299,3 +300,27 @@ def test_provider_receives_only_validated_requirement(
     service.analyze(" \t分析客服工单\n ")
 
     assert provider.calls == ["分析客服工单"]
+
+
+@pytest.mark.parametrize("mode", [AnalysisMode.MOCK, AnalysisMode.DEEPSEEK])
+def test_service_removes_full_requirement_echoes_from_all_report_fields(
+    minimal_report_data: dict[str, object], mode: AnalysisMode
+) -> None:
+    requirement = "某企业需要自动分类客服工单并保留人工审核"
+    report_data = deepcopy(minimal_report_data)
+    report_data["requirement_summary"] = f"摘要：{requirement}"
+    report_data["workflow"][0]["objective"] = f"处理：{requirement}"
+    report = AgentReport.model_validate(report_data)
+    provider = SpyProvider(report)
+    service = DiagnosisService(
+        providers={mode: provider},
+        renderer=MarkdownRenderer(),
+    )
+
+    result = service.analyze(requirement, mode=mode)
+
+    serialized = result.report.model_dump_json()
+    assert requirement not in serialized
+    assert requirement not in result.markdown
+    assert "原始需求内容已省略" in serialized
+    assert "原始需求内容已省略" in result.markdown
