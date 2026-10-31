@@ -39,17 +39,17 @@ def test_defaults_match_verified_official_configuration() -> None:
     assert config.max_retries == DEEPSEEK_MAX_RETRIES == 0
 
 
-def test_model_and_https_base_url_are_configurable() -> None:
+def test_model_and_official_https_base_url_are_configurable() -> None:
     config = load_deepseek_config(
         {
             "DEEPSEEK_API_KEY": FAKE_API_KEY,
             "DEEPSEEK_MODEL": "deepseek-custom-test",
-            "DEEPSEEK_BASE_URL": "https://gateway.example.test/deepseek/",
+            "DEEPSEEK_BASE_URL": "https://api.deepseek.com/v1/",
         }
     )
 
     assert config.model == "deepseek-custom-test"
-    assert config.base_url == "https://gateway.example.test/deepseek"
+    assert config.base_url == "https://api.deepseek.com/v1"
 
 
 @pytest.mark.parametrize(
@@ -61,6 +61,10 @@ def test_model_and_https_base_url_are_configurable() -> None:
         "https://user:password@api.deepseek.com",
         "https://api.deepseek.com?api_key=unsafe",
         "https://api.deepseek.com#fragment",
+        "https://gateway.example.test/deepseek",
+        "https://api.deepseek.com.evil.example",
+        "https://api.deepseek.com/other",
+        "https://api.deepseek.com:444",
     ],
 )
 def test_invalid_or_unsafe_base_url_fails_safely(base_url: str) -> None:

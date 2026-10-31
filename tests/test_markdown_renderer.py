@@ -50,7 +50,7 @@ def test_full_report_contains_all_required_sections(
 def test_mock_notice_is_prominently_preserved() -> None:
     report = MockProvider().diagnose("建立企业知识库问答助手")
 
-    rendered = MarkdownRenderer().render(report)
+    rendered = MarkdownRenderer().render(report, mode_label="【Mock 演示结果】")
 
     assert MOCK_NOTICE in rendered
     assert "**模式标识：** 【Mock 演示结果】" in rendered
@@ -72,6 +72,28 @@ def test_trusted_deepseek_mode_label_does_not_depend_on_report_fields(
     assert "**模式标识：** DeepSeek 真实模型分析" in rendered
     assert "**模式标识：** 【Mock 演示结果】" not in rendered
     assert "内容由固定规则与模板生成" not in rendered
+
+
+def test_missing_trusted_mode_never_uses_model_claim() -> None:
+    report = MockProvider().diagnose("建立企业知识库问答助手")
+
+    rendered = MarkdownRenderer().render(report)
+
+    assert "**模式标识：** 未由可信应用层指定" in rendered
+    assert "**模式标识：** 【Mock 演示结果】" not in rendered
+
+
+def test_invisible_and_bidirectional_controls_are_removed(
+    minimal_report_data: dict[str, object],
+) -> None:
+    data = deepcopy(minimal_report_data)
+    data["requirement_summary"] = "正常文本\x00\x1b\u202e伪装文本\u2066结束"
+    report = AgentReport.model_validate(data)
+
+    rendered = MarkdownRenderer().render(report)
+
+    assert "正常文本伪装文本结束" in rendered
+    assert all(character not in rendered for character in ("\x00", "\x1b", "\u202e", "\u2066"))
 
 
 def test_metric_remains_explicitly_suggested(
