@@ -9,8 +9,6 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
-from agent_task_pilot.providers import ConfigurationMissingError
-
 DEFAULT_DEEPSEEK_MODEL = "deepseek-flash"
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_TIMEOUT_SECONDS = 60
@@ -67,6 +65,8 @@ def load_deepseek_config(
     environ: Mapping[str, str] | None = None,
 ) -> DeepSeekConfig:
     """Load DeepSeek settings on demand and map failures to a safe error."""
+    from agent_task_pilot.providers.errors import ConfigurationMissingError
+
     source = os.environ if environ is None else environ
     api_key = source.get("DEEPSEEK_API_KEY", "").strip()
     if not api_key:

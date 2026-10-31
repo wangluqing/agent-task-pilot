@@ -173,7 +173,7 @@
 
 **目标**：按实现时核对的 DeepSeek 官方接口构造请求，设置超时，将响应解析并验证为领域报告。
 
-**前置决策**：T09 已依据官方文档核实默认模型标识 `deepseek-flash` 和正式端点 `https://api.deepseek.com`；T10 仍需核实结构化输出方法。超时已固定为 60 秒，自动重试固定为 0 次。
+**前置决策**：T09 已依据官方文档核实默认模型标识 `deepseek-flash` 和正式端点 `https://api.deepseek.com`；T10 已核实并采用 Chat Completions 的 JSON Output。超时固定为 60 秒，自动重试固定为 0 次。
 
 **产物**：DeepSeek 适配器、提示词/结构约束、HTTP 或 SDK 边界测试。
 
@@ -272,7 +272,7 @@
 
 ## 6. 当前未解决决策
 
-- DeepSeek 结构化输出方案仍待 T10 核实；默认模型 `deepseek-flash` 和官方端点已在 T09 核实。
+- DeepSeek Chat Completions 与 JSON Output 方案已在 T10 核实；真实 API 冒烟仍须另行明确授权，不属于默认测试。
 - DeepSeek 每次提交外发确认控件的具体文案和交互形式。
 - UI 自动化测试采用 Streamlit 原生测试能力还是更窄的可测试视图函数；建议优先原生应用测试并保持核心逻辑脱离 UI。
 
