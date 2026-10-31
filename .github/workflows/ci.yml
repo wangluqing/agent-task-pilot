@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,12 +31,17 @@ jobs:
         run: uv sync --locked
 
       - name: Lint
+        env:
+          UV_OFFLINE: "1"
         run: uv run ruff check .
 
       - name: Check formatting
+        env:
+          UV_OFFLINE: "1"
         run: uv run ruff format --check .
 
       - name: Test without external API access
         env:
           DEEPSEEK_API_KEY: ""
-        run: uv run pytest -q
+          UV_OFFLINE: "1"
+        run: uv run pytest -q -p no:cacheprovider

@@ -1,74 +1,175 @@
 # AgentTaskPilot
 
-AgentTaskPilot V0.1 是面向企业业务用户的 AI Agent 需求诊断与任务规划工具。Streamlit 页面默认提供完全本地运行的 Mock 演示，也可在明确授权后调用可选的 DeepSeek 外部模型。
+AgentTaskPilot V0.1 是面向企业业务用户的 AI Agent 需求诊断与任务规划工具。用户输入一段业务需求后，系统生成结构化中文报告，帮助团队在开发前讨论 Agent 适用性、实施流程、工具、人工审核、风险和验收指标。
 
-## 环境要求
+它不是会自主执行业务的 Agent：不会操作企业系统、调用报告中的建议工具，也不提供多 Agent 编排、登录、数据库或生产级权限管理。
 
-- Python 3.11+
-- uv
+## V0.1 能力
 
-## 初始化
+- 校验 1–2000 个 Unicode 字符的业务需求，超限拒绝而不截断。
+- 输出“适合 / 有条件适合 / 不适合”的判断、理由和实施前提。
+- 规划连续编号的任务流程、建议工具和人工审核点。
+- 分别识别隐私、权限和错误输出风险，并保留可能性与严重性。
+- 提供可测量的验收指标建议；目标值始终标注为建议值。
+- 默认使用离线、确定性的 Mock 模式，无需 API Key。
+- 可选使用 DeepSeek；外部响应必须通过 Pydantic 领域校验。
+- 在浏览器中下载 UTF-8 Markdown 报告，不写入服务器本地文件。
 
-PowerShell：
+## 前置要求
+
+- Windows 10/11 和 PowerShell
+- Python 3.11 或更高版本
+- [Git](https://git-scm.com/download/win)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+如果尚未安装 uv，可在 PowerShell 中使用其官方安装脚本：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+uv --version
+```
+
+## 克隆与安装
+
+仓库公开后，请把 `<OWNER>` 替换为实际 GitHub 账号或组织名：
+
+```powershell
+git clone https://github.com/<OWNER>/agent-task-pilot.git
+Set-Location agent-task-pilot
+$env:UV_CACHE_DIR = "$PWD\.uv-cache"
+uv sync --locked
+uv run python --version
+```
+
+`uv sync --locked` 使用已提交的 `uv.lock`，不会在同步时擅自改写锁文件。
+
+## 启动与使用 Mock 模式
+
+Mock 是默认模式，不需要 API Key，也不会调用模型或外部网络：
 
 ```powershell
 $env:UV_CACHE_DIR = "$PWD\.uv-cache"
-uv sync --locked
+uv run streamlit run app.py
 ```
 
-项目默认 Mock 模式不需要 API Key。DeepSeek 配置模块只在被显式调用时读取进程环境变量，不会在导入时读取配置，也不会自动加载 `.env`。可在 Windows PowerShell 当前会话中设置：
+浏览器打开终端显示的本地地址后，可使用以下虚构需求体验：
+
+> 某虚构企业每天收到约 500 条客服工单，希望辅助识别问题类型、推荐处理部门，并让客服主管审核高风险工单。
+
+选择默认的“Mock（本地演示）”，点击“开始诊断”。Mock 报告是固定规则生成的演示结果，不代表真实大模型理解或生产效果。
+
+## 配置 DeepSeek 模式
+
+DeepSeek 是可选的外部模型模式。API Key 只从当前进程环境读取；不要把真实密钥写入源码、`.env.example`、日志、Issue 或提交历史。
 
 ```powershell
 $env:DEEPSEEK_API_KEY = "<your-key>"
 $env:DEEPSEEK_MODEL = "deepseek-flash"
 $env:DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+uv run streamlit run app.py
 ```
 
-`.env.example` 仅作为变量名参考；不要在其中填写真实密钥，也不要提交本地 `.env`。应用不会从页面收集或展示 API Key。DeepSeek 模式必须由用户主动选择，并在每次提交前明确同意将当前需求发送至外部 API。
+在页面选择 DeepSeek 后，每次提交都必须主动勾选本次外发同意。当前需求将发送给 DeepSeek API，可能产生费用；不得输入未经授权的企业机密、个人敏感信息或其他受限制数据。提交、修改需求或切换模式后，同意状态都会失效。
 
-## 安全边界
+应用不会自动加载 `.env`。如需清除当前 PowerShell 会话中的 Key：
 
-- 当前版本仅适合可信用户在本地使用自己的 DeepSeek API Key（BYOK），不具备公开多用户托管所需的身份认证、租户隔离、配额、审计和服务端授权能力。
-- 外发同意由 Streamlit 页面强制执行。`DiagnosisService` 是可复用的应用服务，Python 调用方若绕过页面直接选择 `deepseek`，必须自行取得并记录合法授权。
-- `DEEPSEEK_BASE_URL` 仅接受 DeepSeek 官方 `https://api.deepseek.com`（兼容 `/v1` 路径），避免把鉴权头发送到非官方主机。
-- 单次请求超时 60 秒、自动重试 0 次、响应体上限约 2 MB，但当前没有费用上限、Token 用量展示或用户配额。启用真实模式前应在 DeepSeek 账户侧设置预算和告警。
-- Prompt 防注入提示不是唯一安全边界；模型输出仍需通过固定的 Pydantic 契约校验，并由应用层提供可信模式标识后才能展示和下载。
+```powershell
+Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+```
 
-## 启动 Streamlit Demo
+## 报告与下载
 
-在 Windows PowerShell 中执行：
+成功报告包含八个 Markdown 主章节：
+
+1. 需求摘要（不包含完整原始需求）
+2. 适用性分析
+3. 任务流程
+4. 主要风险与缓解措施
+5. 验收指标建议
+6. 假设
+7. 待确认问题
+8. 使用限制
+
+页面上的“下载 Markdown 报告”使用服务层已经生成并验证的同一份内容，文件名固定为 `agent_diagnosis_report.md`；下载不会再次调用模型。
+
+## 测试与质量检查
 
 ```powershell
 $env:UV_CACHE_DIR = "$PWD\.uv-cache"
 uv sync --locked
-uv run streamlit run app.py
-```
-
-终端显示本地地址后，在浏览器打开页面。Mock 模式不调用外部服务；DeepSeek 模式会将当前业务需求发送至 DeepSeek API，请勿输入未经授权的企业机密或个人敏感信息。页面数据只保存在当前 Streamlit 会话，不写入本地报告文件；下载由浏览器处理。
-
-## 质量检查
-
-```powershell
-$env:UV_CACHE_DIR = "$PWD\.uv-cache"
 uv run ruff check .
 uv run ruff format --check .
-uv run pytest -q
+uv run pytest -q -p no:cacheprovider
 uv run python --version
 git diff --check
 ```
 
-CI 不配置真实 API Key，也不允许访问真实外部 API。
+自动化测试使用 Fake Provider/Transport，不需要真实 Key，也不调用真实 DeepSeek API。GitHub Actions 执行相同的 Ruff 和 pytest 门禁；远程 CI 是否通过应以仓库实际运行记录为准。
 
-## 目录结构
+## 常见问题
+
+### 找不到 `uv`
+
+重新打开 PowerShell，并运行 `uv --version`。仍不可用时按 uv 官方安装文档检查 PATH。
+
+### `uv sync --locked` 提示锁文件不一致
+
+确认检出的是完整仓库且 `pyproject.toml`、`uv.lock` 来自同一提交。普通使用者不要手工编辑锁文件。
+
+### Streamlit 页面没有自动打开
+
+复制终端中的 `Local URL` 到浏览器。确认本机防火墙没有阻止本地端口。
+
+### Mock 模式要求 API Key 或访问网络
+
+这是非预期行为。确认页面选择的是“Mock（本地演示）”，并提交可复现信息；不要在 Issue 中粘贴真实 Key 或业务数据。
+
+### DeepSeek 提示配置缺失
+
+在启动 Streamlit 的同一个 PowerShell 会话中设置 `DEEPSEEK_API_KEY`，然后重启应用。页面不提供 Key 输入框。
+
+### DeepSeek 鉴权、限流、超时或解析失败
+
+检查账户状态、配额和官方服务状态，稍后重新授权并提交。系统不会静默回退到 Mock，也不会开放失败报告的下载。
+
+## 安全与部署边界
+
+- 当前版本仅适合可信用户在本地使用自己的 API Key（BYOK）。
+- Streamlit UI 负责一次性外发授权；直接调用 `DiagnosisService` 的集成方必须自行取得合法授权。
+- 当前没有身份认证、租户隔离、服务端权限、配额、审计、费用上限或 Token 用量展示。
+- 单次 DeepSeek 请求超时 60 秒、自动重试 0 次、响应体上限约 2 MB。
+- Prompt 防注入不是唯一安全边界；模型输出还必须通过领域校验和安全渲染。
+- 公开 GitHub 源码仓库不等于可以安全公开部署为多用户 SaaS。V0.1 不建议直接暴露到公网供不受信任用户使用。
+
+漏洞报告方式和密钥泄露处置见 [SECURITY.md](SECURITY.md)，参与开发见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 项目结构
 
 ```text
 src/agent_task_pilot/
-├── domain/       # 领域模型与规则
-├── providers/    # Mock 与外部模型适配器
-├── renderers/    # Markdown 等输出渲染
-└── services/     # 应用服务编排
-tests/            # 自动化测试
-app.py            # Streamlit 单页应用入口
+├── domain/       # Pydantic 领域模型与规则
+├── providers/    # Mock 与 DeepSeek 适配器
+├── renderers/    # Markdown 安全渲染
+└── services/     # 输入校验与诊断编排
+tests/            # 离线自动化测试
+app.py            # Streamlit 单页入口
 ```
 
-产品范围和冻结决策见 `PRD.md`，分阶段实施任务见 `IMPLEMENTATION_PLAN.md`，工程约束见 `AGENTS.md`。
+## 已知限制
+
+- Mock 只按本地规则和模板匹配，不进行真实语义推理。
+- DeepSeek 输出可能不准确，不能替代业务、法务、合规、安全或技术评审。
+- 不保证适用于特定行业法规，也没有经过生产环境效果验证。
+- 不持久化历史报告，不支持团队协作、用户账户或企业系统集成。
+- 没有内置费用预算、调用统计和在线漏洞扫描。
+
+## 许可证状态
+
+仓库目前尚未确定开源许可证。在仓库所有者明确选择并添加 `LICENSE` 前，源码公开可见不代表获得复制、修改、分发或商用授权。
+
+- MIT：文本简短、限制少，要求保留版权与许可证声明。
+- Apache-2.0：同样允许广泛使用，并包含明确的专利授权和 NOTICE 机制，文本和合规要求更完整。
+
+若项目计划接受企业采用或外部贡献，建议所有者优先评估 Apache-2.0；最终选择必须由仓库所有者确认。
+
+产品范围见 [PRD.md](PRD.md)，实施计划见 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)，工程约束见 [AGENTS.md](AGENTS.md)。
