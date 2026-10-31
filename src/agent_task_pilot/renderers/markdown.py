@@ -16,6 +16,9 @@ _SENSITIVE_PATTERNS = (
 )
 _MARKDOWN_SPECIAL = re.compile(r"([\\`*_{\[\]()#+.!|>~-])")
 _LINE_BREAKS = re.compile(r"\r\n?|\n")
+_UNSAFE_CONTROL_CHARACTERS = re.compile(
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]"
+)
 
 
 class MarkdownRenderer:
@@ -28,7 +31,7 @@ class MarkdownRenderer:
 
         append(f"# {self._safe_text(report.title)}")
         append("")
-        append(f"**模式标识：** {self._mode_label(report, mode_label)}")
+        append(f"**模式标识：** {self._mode_label(mode_label)}")
         append("")
 
         append("## 1. 需求摘要")
@@ -109,29 +112,19 @@ class MarkdownRenderer:
         append("- 本报告仅用于需求诊断与方案讨论，不代表自动执行授权或最终业务决策。")
         append("- 报告仅包含领域模型中的需求摘要，不包含用户原始需求全文。")
         append("- 所有建议指标均为建议值，需由业务负责人审核后才能成为正式验收目标。")
-        if self._is_mock_mode(report, mode_label):
+        if self._is_mock_mode(mode_label):
             append(f"- {MOCK_MARKER}内容由固定规则与模板生成，不代表真实模型分析或实测结果。")
 
         return "\n".join(lines).rstrip() + "\n"
 
-    def _mode_label(self, report: AgentReport, trusted_label: str | None) -> str:
+    def _mode_label(self, trusted_label: str | None) -> str:
         if trusted_label is not None:
             return self._safe_text(trusted_label)
-        if self._is_mock(report):
-            return MOCK_MARKER
-        return "未在报告字段中声明"
-
-    @classmethod
-    def _is_mock_mode(cls, report: AgentReport, trusted_label: str | None) -> bool:
-        if trusted_label is not None:
-            return trusted_label == MOCK_MARKER
-        return cls._is_mock(report)
+        return "未由可信应用层指定"
 
     @staticmethod
-    def _is_mock(report: AgentReport) -> bool:
-        return MOCK_MARKER in report.title or any(
-            MOCK_MARKER in item for item in report.assumptions
-        )
+    def _is_mock_mode(trusted_label: str | None) -> bool:
+        return trusted_label == MOCK_MARKER
 
     @classmethod
     def _safe_text(cls, value: str) -> str:
@@ -139,7 +132,8 @@ class MarkdownRenderer:
         redacted = value
         for pattern in _SENSITIVE_PATTERNS:
             redacted = pattern.sub(REDACTION_MARKER, redacted)
-        single_line = _LINE_BREAKS.sub(" ↩ ", redacted)
+        without_controls = _UNSAFE_CONTROL_CHARACTERS.sub("", redacted)
+        single_line = _LINE_BREAKS.sub(" ↩ ", without_controls)
         escaped_html = html.escape(single_line, quote=True)
         return _MARKDOWN_SPECIAL.sub(r"\\\1", escaped_html)
 

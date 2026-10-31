@@ -21,6 +21,10 @@ htmlcov/
 !.env.example
 *.secret
 *.secrets
+*.pem
+*.key
+*.p12
+*.pfx
 .secrets/
 secrets/
 .streamlit/secrets.toml

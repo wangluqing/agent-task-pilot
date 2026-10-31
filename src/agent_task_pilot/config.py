@@ -11,6 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 DEFAULT_DEEPSEEK_MODEL = "deepseek-flash"
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+ALLOWED_DEEPSEEK_HOST = "api.deepseek.com"
+ALLOWED_DEEPSEEK_PATHS = frozenset({"", "/v1"})
 DEEPSEEK_TIMEOUT_SECONDS = 60
 DEEPSEEK_MAX_RETRIES = 0
 
@@ -51,13 +53,15 @@ class DeepSeekConfig(BaseModel):
         parsed = urlsplit(normalized)
         if (
             parsed.scheme != "https"
-            or not parsed.hostname
+            or parsed.hostname != ALLOWED_DEEPSEEK_HOST
+            or parsed.port not in {None, 443}
             or parsed.username is not None
             or parsed.password is not None
             or parsed.query
             or parsed.fragment
+            or parsed.path not in ALLOWED_DEEPSEEK_PATHS
         ):
-            raise ValueError("API 地址必须是安全的 HTTPS 地址")
+            raise ValueError("API 地址必须是 DeepSeek 官方 HTTPS 地址")
         return normalized
 
 

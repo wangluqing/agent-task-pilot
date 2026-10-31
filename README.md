@@ -26,6 +26,14 @@ $env:DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 `.env.example` 仅作为变量名参考；不要在其中填写真实密钥，也不要提交本地 `.env`。应用不会从页面收集或展示 API Key。DeepSeek 模式必须由用户主动选择，并在每次提交前明确同意将当前需求发送至外部 API。
 
+## 安全边界
+
+- 当前版本仅适合可信用户在本地使用自己的 DeepSeek API Key（BYOK），不具备公开多用户托管所需的身份认证、租户隔离、配额、审计和服务端授权能力。
+- 外发同意由 Streamlit 页面强制执行。`DiagnosisService` 是可复用的应用服务，Python 调用方若绕过页面直接选择 `deepseek`，必须自行取得并记录合法授权。
+- `DEEPSEEK_BASE_URL` 仅接受 DeepSeek 官方 `https://api.deepseek.com`（兼容 `/v1` 路径），避免把鉴权头发送到非官方主机。
+- 单次请求超时 60 秒、自动重试 0 次、响应体上限约 2 MB，但当前没有费用上限、Token 用量展示或用户配额。启用真实模式前应在 DeepSeek 账户侧设置预算和告警。
+- Prompt 防注入提示不是唯一安全边界；模型输出仍需通过固定的 Pydantic 契约校验，并由应用层提供可信模式标识后才能展示和下载。
+
 ## 启动 Streamlit Demo
 
 在 Windows PowerShell 中执行：

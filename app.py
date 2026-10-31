@@ -74,40 +74,40 @@ def _display_report(result: DiagnosisResult) -> None:
     st.header("诊断结果")
     st.markdown(f"**模式标识：** {result.mode_label}")
     st.subheader("适用性判断")
-    st.write(f"结论：{report.applicability.verdict.value}")
+    st.text(f"结论：{report.applicability.verdict.value}")
     st.markdown("**判断理由**")
     for index, reason in enumerate(report.applicability.reasons, start=1):
-        st.write(f"{index}. {reason}")
+        st.text(f"{index}. {reason}")
 
     st.markdown("**实施前提**")
     if report.applicability.prerequisites:
         for index, prerequisite in enumerate(report.applicability.prerequisites, start=1):
-            st.write(f"{index}. {prerequisite}")
+            st.text(f"{index}. {prerequisite}")
     else:
-        st.write("暂无明确前提。")
+        st.text("暂无明确前提。")
 
     st.subheader("任务流程与人工审核")
     for step in report.workflow:
         with st.expander(f"步骤 {step.step}：{step.name}", expanded=True):
-            st.write(f"目标：{step.objective}")
+            st.text(f"目标：{step.objective}")
             st.markdown("**输入**")
             for item in step.inputs:
-                st.write(f"- {item}")
+                st.text(f"- {item}")
             st.markdown("**动作**")
             for item in step.actions:
-                st.write(f"- {item}")
+                st.text(f"- {item}")
             st.markdown("**输出**")
             for item in step.outputs:
-                st.write(f"- {item}")
+                st.text(f"- {item}")
             st.markdown("**建议工具**")
             for tool in step.suggested_tools:
-                st.write(f"{tool.name}｜用途：{tool.purpose}｜所需访问：{tool.required_access}")
+                st.text(f"{tool.name}｜用途：{tool.purpose}｜所需访问：{tool.required_access}")
             st.markdown("**人工审核点**")
-            st.write(f"是否需要：{'是' if step.human_review.required else '否'}")
+            st.text(f"是否需要：{'是' if step.human_review.required else '否'}")
             if step.human_review.required:
-                st.write(f"审核时点：{step.human_review.checkpoint}")
-                st.write(f"审核角色：{step.human_review.reviewer}")
-                st.write(f"通过标准：{step.human_review.pass_criteria}")
+                st.text(f"审核时点：{step.human_review.checkpoint}")
+                st.text(f"审核角色：{step.human_review.reviewer}")
+                st.text(f"通过标准：{step.human_review.pass_criteria}")
 
     st.subheader("主要风险")
     for risk in report.risks:
@@ -115,30 +115,30 @@ def _display_report(result: DiagnosisResult) -> None:
             f"{risk.category.value}｜可能性 {risk.likelihood.value}｜严重性 {risk.severity.value}"
         )
         with st.expander(risk_title):
-            st.write(f"风险描述：{risk.description}")
-            st.write(f"潜在影响：{risk.impact}")
-            st.write(f"缓解措施：{risk.mitigation}")
+            st.text(f"风险描述：{risk.description}")
+            st.text(f"潜在影响：{risk.impact}")
+            st.text(f"缓解措施：{risk.mitigation}")
 
     st.subheader("验收指标建议")
     for metric in report.acceptance_metrics:
-        st.write(f"指标：{metric.name}")
-        st.write(f"定义：{metric.definition}")
-        st.write(f"测量方法：{metric.measurement}")
-        st.write(f"建议目标：{metric.target}")
+        st.text(f"指标：{metric.name}")
+        st.text(f"定义：{metric.definition}")
+        st.text(f"测量方法：{metric.measurement}")
+        st.text(f"建议目标：{metric.target}")
 
     st.subheader("假设")
     if report.assumptions:
         for index, assumption in enumerate(report.assumptions, start=1):
-            st.write(f"{index}. {assumption}")
+            st.text(f"{index}. {assumption}")
     else:
-        st.write("暂无明确假设。")
+        st.text("暂无明确假设。")
 
     st.subheader("待确认问题")
     if report.open_questions:
         for index, question in enumerate(report.open_questions, start=1):
-            st.write(f"{index}. {question}")
+            st.text(f"{index}. {question}")
     else:
-        st.write("暂无待确认问题。")
+        st.text("暂无待确认问题。")
 
     st.download_button(
         "下载 Markdown 报告",

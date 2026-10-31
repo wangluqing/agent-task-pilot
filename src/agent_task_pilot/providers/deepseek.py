@@ -73,13 +73,30 @@ class HTTPTransport(Protocol):
         ...
 
 
+class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject redirects so Authorization never follows to another endpoint."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
 class UrllibTransport:
     """Standard-library HTTP implementation with no built-in retries."""
 
     def send(self, request: urllib.request.Request, timeout: int) -> HTTPResponse:
         """Send one request; do not retain or expose an error response body."""
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            opener = urllib.request.build_opener(NoRedirectHandler())
+            with opener.open(request, timeout=timeout) as response:
                 body = response.read(MAX_RESPONSE_BYTES + 1)
                 return HTTPResponse(status=response.status, body=body)
         except urllib.error.HTTPError as error:
