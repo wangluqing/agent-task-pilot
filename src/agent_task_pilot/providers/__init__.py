@@ -1,0 +1,1 @@
+"""Diagnostic provider adapters."""
