@@ -8,6 +8,7 @@ from agent_task_pilot.domain import AgentReport
 from agent_task_pilot.providers import (
     AuthenticationError,
     ConfigurationMissingError,
+    DeepSeekProvider,
     ErrorCode,
     ReportValidationError,
     UnknownProviderError,
@@ -104,7 +105,10 @@ def test_invalid_input_is_rejected_before_provider_call(invalid_requirement: obj
     assert provider.calls == []
 
 
-def test_unconfigured_deepseek_fails_without_mock_fallback() -> None:
+def test_unconfigured_deepseek_fails_without_mock_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     mock_provider = SpyProvider(None)
     service = _service_with_mock_provider(mock_provider, StaticRenderer())
 
@@ -113,6 +117,27 @@ def test_unconfigured_deepseek_fails_without_mock_fallback() -> None:
 
     assert caught.value.code is ErrorCode.CONFIG_MISSING
     assert mock_provider.calls == []
+
+
+def test_default_service_registers_deepseek_provider_and_renders_result(
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    calls: list[str] = []
+
+    def fake_diagnose(self: DeepSeekProvider, validated_requirement: str) -> AgentReport:
+        del self
+        calls.append(validated_requirement)
+        return report
+
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", fake_diagnose)
+
+    result = DiagnosisService().analyze("  分析客服工单  ", mode="deepseek")
+
+    assert calls == ["分析客服工单"]
+    assert result.report == report
+    assert "客服工单分流 Agent 诊断报告" in result.markdown
 
 
 def test_known_provider_error_is_preserved(

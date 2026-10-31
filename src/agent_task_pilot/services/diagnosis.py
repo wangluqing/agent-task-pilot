@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from agent_task_pilot.domain import AgentReport
 from agent_task_pilot.providers import (
     ConfigurationMissingError,
+    DeepSeekProvider,
     DiagnosisProvider,
     MockProvider,
     ProviderError,
@@ -48,7 +49,8 @@ class DiagnosisService:
         renderer: ReportRenderer | None = None,
     ) -> None:
         configured_providers: dict[AnalysisMode, DiagnosisProvider] = {
-            AnalysisMode.MOCK: MockProvider()
+            AnalysisMode.MOCK: MockProvider(),
+            AnalysisMode.DEEPSEEK: DeepSeekProvider(),
         }
         if providers is not None:
             configured_providers.update(providers)

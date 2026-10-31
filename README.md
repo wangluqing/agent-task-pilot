@@ -1,6 +1,6 @@
 # AgentTaskPilot
 
-AgentTaskPilot V0.1 是面向企业业务用户的 AI Agent 需求诊断与任务规划工具。当前提供无需 API Key、完全本地运行的 Streamlit Mock 演示页面。
+AgentTaskPilot V0.1 是面向企业业务用户的 AI Agent 需求诊断与任务规划工具。Streamlit 页面默认提供完全本地运行的 Mock 演示，也可在明确授权后调用可选的 DeepSeek 外部模型。
 
 ## 环境要求
 
@@ -24,7 +24,7 @@ $env:DEEPSEEK_MODEL = "deepseek-flash"
 $env:DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 ```
 
-`.env.example` 仅作为变量名参考；不要在其中填写真实密钥，也不要提交本地 `.env`。应用不会从页面收集 API Key，当前 UI 仍未开放 DeepSeek 模式。
+`.env.example` 仅作为变量名参考；不要在其中填写真实密钥，也不要提交本地 `.env`。应用不会从页面收集或展示 API Key。DeepSeek 模式必须由用户主动选择，并在每次提交前明确同意将当前需求发送至外部 API。
 
 ## 启动 Streamlit Demo
 
@@ -36,7 +36,7 @@ uv sync --locked
 uv run streamlit run app.py
 ```
 
-终端显示本地地址后，在浏览器打开页面。当前仅开放 Mock 模式，不调用 DeepSeek 或其他外部服务。页面数据只保存在当前 Streamlit 会话，不写入本地报告文件；下载由浏览器处理。
+终端显示本地地址后，在浏览器打开页面。Mock 模式不调用外部服务；DeepSeek 模式会将当前业务需求发送至 DeepSeek API，请勿输入未经授权的企业机密或个人敏感信息。页面数据只保存在当前 Streamlit 会话，不写入本地报告文件；下载由浏览器处理。
 
 ## 质量检查
 

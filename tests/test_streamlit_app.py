@@ -6,10 +6,22 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from agent_task_pilot.domain import AgentReport
+from agent_task_pilot.providers import (
+    AuthenticationError,
+    DeepSeekProvider,
+    ErrorCode,
+    ParseError,
+    RateLimitedError,
+    ReportValidationError,
+    TimeoutError,
+)
+from agent_task_pilot.providers.errors import ERROR_MESSAGES
 from agent_task_pilot.services import DiagnosisService
 
 APP_PATH = Path(__file__).parents[1] / "app.py"
 VALID_REQUIREMENT = "某企业每天处理约500条客服工单，希望自动分类并保留人工审核。"
+DEEPSEEK_MODE_LABEL = "DeepSeek（外部模型）"
 
 
 def _app() -> AppTest:
@@ -31,6 +43,14 @@ def _visible_text(app: AppTest) -> str:
     return "\n".join(
         str(element.value) for element_type in element_types for element in app.get(element_type)
     )
+
+
+def _select_deepseek(app: AppTest) -> AppTest:
+    return app.radio[0].set_value(DEEPSEEK_MODE_LABEL).run()
+
+
+def _authorize_deepseek(app: AppTest) -> AppTest:
+    return app.checkbox[0].set_value(True).run()
 
 
 def test_initial_page_has_no_report_or_download() -> None:
@@ -99,18 +119,21 @@ def test_changing_input_invalidates_old_result_and_download() -> None:
     assert "诊断结果" not in [header.value for header in app.header]
 
 
-def test_switching_mode_invalidates_result_and_disables_submission() -> None:
+def test_switching_to_deepseek_invalidates_result_and_requires_consent() -> None:
     app = _app()
     app.text_area[0].input(VALID_REQUIREMENT).run()
     app.button[0].click().run()
     assert len(app.download_button) == 1
 
-    app.radio[0].set_value("DeepSeek（尚未开放）").run()
+    _select_deepseek(app)
 
     assert not app.exception
     assert len(app.download_button) == 0
     assert app.button[0].disabled is True
-    assert any("尚未开放" in info.value for info in app.info)
+    assert app.checkbox[0].value is False
+    visible = _visible_text(app)
+    assert "发送至 DeepSeek API" in visible
+    assert "不保证业务判断准确" in visible
 
 
 def test_failed_submission_removes_previous_success() -> None:
@@ -129,12 +152,12 @@ def test_failed_submission_removes_previous_success() -> None:
 def test_mock_notice_is_prominent() -> None:
     app = _app()
     initial_text = _visible_text(app)
-    assert "Mock 演示版本" in initial_text
-    assert "不代表真实大模型诊断" in initial_text
+    assert "Mock 本地模板演示" in initial_text
+    assert "不代表真实语义理解或大模型诊断" in initial_text
 
     app.text_area[0].input(VALID_REQUIREMENT).run()
     app.button[0].click().run()
-    assert "Mock 演示结果" in _visible_text(app)
+    assert "Mock 本地模板演示结果" in _visible_text(app)
 
 
 def test_download_uses_service_markdown_without_rebuilding() -> None:
@@ -206,4 +229,174 @@ def test_app_does_not_access_network_or_deepseek(monkeypatch: pytest.MonkeyPatch
         for node in ast.walk(tree)
         if isinstance(node, ast.ImportFrom) and node.module
     )
-    assert imported_roots <= {"agent_task_pilot", "streamlit"}
+    assert imported_roots <= {"agent_task_pilot", "hashlib", "streamlit"}
+
+
+def test_deepseek_without_consent_never_calls_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    def forbidden_diagnose(self: DeepSeekProvider, validated_requirement: str) -> AgentReport:
+        del self, validated_requirement
+        nonlocal calls
+        calls += 1
+        raise AssertionError("Provider must not be called without consent")
+
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", forbidden_diagnose)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+
+    assert app.checkbox[0].value is False
+    assert app.button[0].disabled is True
+    app.run()
+    assert calls == 0
+    assert len(app.download_button) == 0
+
+
+def test_authorized_deepseek_returns_report_and_markdown(
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    calls: list[str] = []
+
+    def fake_diagnose(self: DeepSeekProvider, validated_requirement: str) -> AgentReport:
+        del self
+        calls.append(validated_requirement)
+        return report
+
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", fake_diagnose)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert calls == [VALID_REQUIREMENT]
+    assert len(app.download_button) == 1
+    assert app.checkbox[0].value is False
+    assert app.button[0].disabled is True
+    assert "DeepSeek 外部模型分析已完成" in _visible_text(app)
+    assert "不构成专业咨询结论" in _visible_text(app)
+    assert "客服工单分流 Agent 诊断报告" in app.session_state["diagnosis_result"].markdown
+
+
+def test_changing_requirement_invalidates_deepseek_consent_and_report(
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", lambda self, requirement: report)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+    assert len(app.download_button) == 1
+
+    app.text_area[0].input("修改后的企业知识库需求").run()
+
+    assert app.checkbox[0].value is False
+    assert len(app.download_button) == 0
+    assert "诊断结果" not in [header.value for header in app.header]
+
+
+def test_each_deepseek_request_requires_new_consent_and_rerun_does_not_repeat(
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    calls = 0
+
+    def fake_diagnose(self: DeepSeekProvider, validated_requirement: str) -> AgentReport:
+        del self, validated_requirement
+        nonlocal calls
+        calls += 1
+        return report
+
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", fake_diagnose)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+    assert calls == 1
+    assert app.checkbox[0].value is False
+
+    app.run()
+    assert calls == 1
+
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+    assert calls == 2
+    assert app.checkbox[0].value is False
+
+
+def test_missing_deepseek_config_fails_without_mock_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    mock_calls = 0
+
+    def forbidden_mock(self: object, requirement: str) -> AgentReport:
+        del self, requirement
+        nonlocal mock_calls
+        mock_calls += 1
+        raise AssertionError("Must not fall back to Mock")
+
+    monkeypatch.setattr("agent_task_pilot.providers.mock.MockProvider.diagnose", forbidden_mock)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+
+    assert mock_calls == 0
+    assert len(app.download_button) == 0
+    assert [error.value for error in app.error] == [ERROR_MESSAGES[ErrorCode.CONFIG_MISSING]]
+
+
+@pytest.mark.parametrize(
+    "provider_error",
+    [
+        AuthenticationError(),
+        TimeoutError(),
+        RateLimitedError(),
+        ParseError(),
+        ReportValidationError(),
+    ],
+)
+def test_deepseek_failure_clears_previous_result_and_shows_safe_error(
+    provider_error: Exception,
+    minimal_report_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = AgentReport.model_validate(minimal_report_data)
+    calls = 0
+
+    def diagnose_then_fail(self: DeepSeekProvider, validated_requirement: str) -> AgentReport:
+        del self, validated_requirement
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return report
+        raise provider_error
+
+    monkeypatch.setattr(DeepSeekProvider, "diagnose", diagnose_then_fail)
+    app = _app()
+    app.text_area[0].input(VALID_REQUIREMENT).run()
+    _select_deepseek(app)
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+    assert len(app.download_button) == 1
+
+    _authorize_deepseek(app)
+    app.button[0].click().run()
+
+    assert calls == 2
+    assert len(app.download_button) == 0
+    assert [error.value for error in app.error] == [str(provider_error)]
+    assert app.checkbox[0].value is False

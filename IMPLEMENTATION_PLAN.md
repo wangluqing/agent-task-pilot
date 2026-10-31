@@ -272,8 +272,6 @@
 
 ## 6. 当前未解决决策
 
-- DeepSeek Chat Completions 与 JSON Output 方案已在 T10 核实；真实 API 冒烟仍须另行明确授权，不属于默认测试。
-- DeepSeek 每次提交外发确认控件的具体文案和交互形式。
-- UI 自动化测试采用 Streamlit 原生测试能力还是更窄的可测试视图函数；建议优先原生应用测试并保持核心逻辑脱离 UI。
+- 真实 DeepSeek API 冒烟仍须另行明确授权，不属于默认测试。
 
-其余输入上限、超时、重试、导出内容、报告语言、风险表达、Mock 标识和指标建议值规则均已冻结。剩余决策应在 T10、T11 和 T08 相应实现前落定，并同步更新 PRD 和测试用例。
+DeepSeek Chat Completions、JSON Output、一次性外发授权交互和 Streamlit AppTest 方案已分别在 T10、T11 和 T08–T11 落定。其余输入上限、超时、重试、导出内容、报告语言、风险表达、Mock 标识和指标建议值规则均已冻结。
