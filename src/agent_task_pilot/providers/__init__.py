@@ -15,6 +15,7 @@ from agent_task_pilot.providers.errors import (
     UnknownProviderError,
     map_provider_exception,
 )
+from agent_task_pilot.providers.mock import MockProvider
 
 __all__ = [
     "AuthenticationError",
@@ -22,6 +23,7 @@ __all__ = [
     "DiagnosisProvider",
     "ErrorCode",
     "NetworkError",
+    "MockProvider",
     "ParseError",
     "ProviderError",
     "RateLimitedError",
